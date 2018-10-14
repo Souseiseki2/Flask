@@ -1,7 +1,7 @@
 import os
 
 import requests
-from flask import Flask, request, flash, render_template, session, redirect, url_for
+from flask import Flask, request, flash, render_template, session, redirect, url_for, abort, jsonify
 from flask_session import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -31,13 +31,20 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api")
-def api():
+@app.route("/api/<string:isbn>")
+def api(isbn):
     # API É A CAMADA QUE FAZ A LIGAÇÃO ENTRE O BANCO DE DADOS E O FRONT-END.
     # RES= RESPONSE =(RESPOSTA),(VARIÁVEL), REQUEST.GET =(REQUISIÇÃO GET = os parâmetros são passados no cabeçalho(sessão paara parametros) da requisição.Por isso, podem ser vistos pela URI.
-    res = request.get("https://www.goodreads.com/book/review_counts.json",
-                      params={"key": "vco3gX9ZLjJWyORdIO2Q", "isbns": "9781632168146"})
-    return str(res.json())
+
+    book = db.execute("select * from book where isbn = :isbn", {"isbn": isbn}).fetchone()
+
+    if not book:
+        return abort(404)
+
+    book_json = dict(book.items())
+    book_json = jsonify(book_json)
+    book_json.status_code = 200
+    return book_json
 
 
 # FAZ A REQUISIÇÃO E ARMAZENA A RESPOSTA PRA MOSTRAR NA TELA
@@ -140,7 +147,7 @@ def search():
             return render_template("search.html")
 
         books = db.execute("SELECT * from book where isbn ILIKE concat('%',:search,'%') or title ILIKE concat('%',:search,'%') or author ILIKE concat('%',:search,'%');",{"search": search}).fetchall()
-
+        db.commit()
         if not books:
             flash("No results")
             return redirect(url_for("search"))
@@ -151,3 +158,34 @@ def search():
 # ILIKE no lugar de = significa que se escrever algo parecido, a busca vai achar algo
 # o primeiro books é o segundo parametro que uma função pode ter(opcional)sendo uma variável que tu vai enviar para o html
 # o segundo é a variável que ta vindo do banco
+@app.route("/books/<int:id>", methods=["GET", "POST"])
+def book(id):
+    if request.method == "GET":
+        book = db.execute("SELECT * from book where id=:id", {"id":id}).fetchone()
+        reviews = db.execute("SELECT * from review join client on review.id_client = client.id where id_book = :id", {"id":id}).fetchall()
+        goodreads = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": "vco3gX9ZLjJWyORdIO2Q", "isbns": book.isbn})
+        return render_template("book.html", book=book, reviews=reviews, goodreads=goodreads.json())
+    if request.method == "POST":
+        try:
+            comment = request.form.get("comment")
+            rating = request.form.get("rating")
+        except ValueError:
+            flash("Error")
+            return
+
+
+        same_user = db.execute("SELECT * FROM review where id_book=:id_book AND id_client=:id_client", {"id_book":id, "id_client":session["id"]}).fetchall()
+
+        if not same_user:
+            db.execute("INSERT INTO review (comment, rating, id_book, id_client) VALUES (:comment, :rating, :id_book, :id_client)", {"comment": comment, "rating": rating, "id_book": id, "id_client": session["id"]})
+            db.commit()
+
+            flash("Review inserted")
+            return redirect(url_for("book", id=id))
+        flash("You already reviewed this books")
+        return redirect(url_for("book", id=id))
+
+
+
+
+

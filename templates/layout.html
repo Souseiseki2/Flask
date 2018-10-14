@@ -17,7 +17,6 @@
                 <li class="nav-item active">
                     <span class="nav-link text-white">Welcome, {{ session['login'] }}</span>
                 </li>
-
              {% endif %}
          </ul>
             {% if session['login'] %}
@@ -34,13 +33,29 @@
              <a class="btn btn-outline-light mx-2" href="{{ url_for('search')}}" role="button">Search</a>
          </nav>
     {% endif %}
-<div style="background-color:#e8eaf6;height: 100vh;">
+
+
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="flashes mx-0 my-0 px-0 py-0">
+            {% for message in messages %}
+                <div class="alert alert-primary text-center mx-0 my-0" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+<div style="background-color:#e8eaf6;height: 200vh;">
         <div class="container">
             {% block body %}
 
             {% endblock %}
         </div>
 </div>
+
 
 </body>
 </html>
