@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block heading %}
+    Login
+{% endblock %}
+
+{% block body %}
+
+    <form action="{{ url_for("login") }}" method="post">
+     <div class="form-group">
+             <br>
+        <span>Login</span>
+        <br>
+        <input type="text" name="login" class="form-control" placeholder="Enter login">
+         </div>
+        <br>
+         <div class="form-group">
+        <span>Password</span>
+        <br>
+        <input type="password" name="password" class="form-control" placeholder="Enter password">
+        <br>
+         </div>
+         <div class="form-group form-check">
+         <input type="checkbox" class="form-check-input">
+             <label class="form-check-label" for="exampleCheck1">Check me out</label>
+             <br>
+             <br>
+        <button type="submit" class="btn btn-danger ">Submit</button>
+    </form>
+
+
+
+
+{% endblock %}
